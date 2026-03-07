@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+	<html lang="en"><head id="j_idt3"><link type="text/css" rel="stylesheet" href="/securereader/javax.faces.resource/theme.css.jsf?ln=primefaces-aristo" /><link type="text/css" rel="stylesheet" href="/securereader/javax.faces.resource/components.css.jsf?ln=primefaces&amp;v=7.0.17" /><script type="text/javascript" src="/securereader/javax.faces.resource/jquery/jquery.js.jsf?ln=primefaces&amp;v=7.0.17"></script><script type="text/javascript" src="/securereader/javax.faces.resource/jquery/jquery-plugins.js.jsf?ln=primefaces&amp;v=7.0.17"></script><script type="text/javascript" src="/securereader/javax.faces.resource/core.js.jsf?ln=primefaces&amp;v=7.0.17"></script><script type="text/javascript" src="/securereader/javax.faces.resource/components.js.jsf?ln=primefaces&amp;v=7.0.17"></script><script type="text/javascript">if(window.PrimeFaces){PrimeFaces.settings.locale='en';}</script>
+			<title>Submit a Message</title>
+    <script type="text/javascript">
+        //<![CDATA[
+var pfptTimeout = {
+    dialogTimeoutLimit: 20000,
+    dialogTimeoutTimer: undefined,
+    focusedItem: undefined,
+    lastFocusedInDialog: undefined,
+    timeoutTimer: undefined,
+    updateDialogInterval: undefined
+};
+
+function setTimeoutTimer() {
+    if (window.location.href.endsWith) {
+        if (!window.location.href.endsWith("timeout.jsf")) {
+            var time = 1800000 + 5000;
+            pfptTimeout.timeoutTimer = window.setTimeout(timeoutCallback, time);
+            // show timeout dialog 20 seconds before session timeout
+            var dialogTime = time - pfptTimeout.dialogTimeoutLimit - 5000;
+            pfptTimeout.dialogTimeoutTimer = window.setTimeout(dialogTimeoutCallback, dialogTime);
+        }
+    } else {
+        // Support browsers prior to ECMA6
+        var loc = window.location.href.substring(window.location.href.lastIndexOf("/")+1);
+        if (loc !== "timeout.jsf") {
+            var timeout = 1800000 + 5000;
+            pfptTimeout.timeoutTimer = window.setTimeout(timeoutCallback, timeout);
+            // show timeout dialog 20 seconds before session timeout
+            var dialogTime = timeout - pfptTimeout.dialogTimeoutLimit - 5000;
+            pfptTimeout.dialogTimeoutTimer = window.setTimeout(dialogTimeoutCallback, dialogTime);
+        }
+    }
+}
+function timeoutCallback() {
+    redirectToTimeoutPage();
+}
+
+function dialogTimeoutCallback() {
+    // store previously focused item so it can be used if session continued
+    pfptTimeout.focusedItem = document.activeElement;
+    showTimeoutModal();
+    setTimeoutMessageInterval();
+}
+
+function setTimeoutMessageInterval() {
+    var remainingTime = pfptTimeout.dialogTimeoutLimit / 1000;
+    updateTimeoutMessageTime(remainingTime);
+    pfptTimeout.updateDialogInterval = window.setInterval(function() {
+        if (remainingTime === 1) {
+            window.clearInterval(pfptTimeout.updateDialogInterval);
+            return;
+        }
+        updateTimeoutMessageTime(--remainingTime);
+    }, 1000);
+}
+
+function updateTimeoutMessageTime(timeRemaining) {
+    document.getElementById('sessionTimeoutWarningCountdown').innerText =
+        (timeRemaining !== 1)
+            ? 'You will be logged out in {0} seconds.'.replace('{0}', timeRemaining)
+            : 'You will be logged out in {0} second.'.replace('{0}', timeRemaining);
+}
+
+function showTimeoutModal() {
+    // position modal in middle of screen
+    var timeoutModal = document.getElementById("sessionTimeOutWarning");
+    timeoutModal.style.display = 'block';
+    var timeoutModalContent = document.getElementById("sessionTimeOutWarningContent");
+    timeoutModalContent.style.top = ((window.innerHeight - timeoutModalContent.clientHeight) / 2) + "px";
+    timeoutModalContent.style.left = ((window.innerWidth - timeoutModalContent.clientWidth) / 2) + "px";
+    timeoutModalContent.style.width = timeoutModalContent.offsetWidth + 'px';
+    document.getElementById('pfptContinueSessionBtn').focus();
+    document.addEventListener('keydown', keepFocusInModal);
+}
+
+function endSession() {
+    $.post('/securereader/managesession');
+    redirectToTimeoutPage();
+}
+
+function redirectToTimeoutPage() {
+    window.location.href = "timeout.jsf";
+}
+
+function continueSession() {
+    $.get('/securereader/managesession');
+    resetTimeoutTimer();
+    closeTimeoutModal();
+}
+
+function closeTimeoutModal() {
+    document.getElementById('sessionTimeOutWarning').style.display = 'none';
+    document.removeEventListener('keydown', keepFocusInModal);
+    var timeoutModalContent = document.getElementById("sessionTimeOutWarningContent");
+    // reset width of modal
+    timeoutModalContent.style.width = '';
+    // restore focus to last item focused before modal was opened
+    if (pfptTimeout.focusedItem) {
+        pfptTimeout.focusedItem.focus();
+    }
+}
+
+function clearTimeoutTimers() {
+    if(pfptTimeout.timeoutTimer) {
+        window.clearTimeout(pfptTimeout.timeoutTimer);
+    }
+    if (pfptTimeout.dialogTimeoutTimer) {
+        window.clearTimeout(pfptTimeout.dialogTimeoutTimer);
+    }
+    if (pfptTimeout.updateDialogInterval){
+        window.clearInterval(pfptTimeout.updateDialogInterval);
+    }
+}
+
+function resetTimeoutTimer() {
+    clearTimeoutTimers();
+    setTimeoutTimer();
+}
+
+// keep keyboard navigation limited to modal
+function keepFocusInModal(event) {
+    var tabPressed = event.key === 'Tab' || event.keyCode === 9;
+    if (!tabPressed) {
+        return;
+    }
+    if (document.getElementById('sessionTimeOutWarning').contains(event.target)) {
+        if (event.shiftKey) {
+            if (event.target.id === 'pfptEndSessionBtn') {
+                document.getElementById('pfptEndSessionBtn').focus();
+                event.preventDefault();
+            }
+        } else {
+            if (event.target.id === 'pfptContinueSessionBtn') {
+                document.getElementById('pfptContinueSessionBtn').focus();
+                event.preventDefault();
+            }
+        }
+        pfptTimeout.lastFocusedInDialog = document.activeElement;
+    } else if (pfptTimeout.lastFocusedInDialog) {
+        pfptTimeout.lastFocusedInDialog.focus();
+        event.preventDefault();
+    } else {
+        document.getElementById('pfptEndSessionBtn').focus();
+        event.preventDefault();
+    }
+    if (document.getElementById('sessionTimeOutWarning').contains(event.target)) {
+        if (event.shiftKey) {
+            if (event.target.id === 'pfptEndSessionBtn') {
+                document.getElementById('pfptEndSessionBtn').focus();
+                event.preventDefault();
+            }
+        } else {
+            if (event.target.id === 'pfptContinueSessionBtn') {
+                document.getElementById('pfptContinueSessionBtn').focus();
+                event.preventDefault();
+            }
+        }
+        pfptTimeout.lastFocusedInDialog = document.activeElement;
+    } else if (pfptTimeout.lastFocusedInDialog) {
+        pfptTimeout.lastFocusedInDialog.focus();
+        event.preventDefault();
+    } else {
+        document.getElementById('pfptEndSessionBtn').focus();
+        event.preventDefault();
+    }
+}
+        //]]>
+    </script><style type="text/css">
+/******************************************************************************
+Styling for a modal to appear on screen
+******************************************************************************/
+
+.pfptModal {
+    position: fixed;
+    display: none; /* modal hidden by default */
+    width: 100%;
+    height: 100%;
+    z-index: 1005;
+    border: none;
+    overflow: hidden;
+    background-color: rgb(0,0,0); /* Fallback if opacity not supported */
+    background-color: rgba(0,0,0,0.4);
+}
+.pfptModal .pfptModalContent {
+    background-color: #ffffff;
+    padding: 1em 2em;
+    font-family:sourceSansPro,sans-serif !important;
+    font-size: 1em;
+    color: #000000;
+    position: absolute;
+    text-align:center;
+}
+.pfptModalButtonsContainer input[type="submit"] {
+    background-color: #3CA0DF;
+    border-radius: 0;
+    border: 0;
+    color: #FFFFFF;
+    font-size: 1.13em;
+    font-weight: bold;
+    margin-top: 1em;
+    padding: 10px;
+    vertical-align: baseline;
+}
+.pfptModalButtonsContainer .continueSessionBtn:hover, .pfptModalButtonsContainer .continueSessionBtn:focus {
+    background-color: #55C6FE;
+}
+.pfptModalButtonsContainer input[type="submit"].endSessionBtn {
+    background-color: #7F7E7A;
+}
+.pfptModalButtonsContainer input[type="submit"].endSessionBtn:hover, .pfptModalButtonsContainer input[type="submit"].endSessionBtn:focus
+{
+    opacity: 0.5;
+}
+</style>
+    <div id="sessionTimeOutWarning" class="pfptModal ui-shadow">
+        <div id="sessionTimeOutWarningContent" class="pfptModalContent" role="alertdialog" aria-describedby="sessionTimeoutWarningMessage sessionTimeoutWarningCountdown" aria-modal="true">
+            <div class="pfptModalMessageContainer" style="margin: 1em 0em">
+                <div id="sessionTimeoutWarningMessageContainer" style="margin: 0 3em 0 3em;">
+                    <div id="sessionTimeoutWarningMessage">Your session is about to expire.</div>
+                    <div id="sessionTimeoutWarningCountdown">You will be logged out in {0} seconds.</div>
+                </div>
+            </div>
+            <div class="pfptModalButtonsContainer"><input id="pfptEndSessionBtn" type="submit" name="pfptEndSessionBtn" value="Log Out" style="margin-right: 1em;" class="endSessionBtn" onclick="endSession()" /><input id="pfptContinueSessionBtn" type="submit" name="pfptContinueSessionBtn" value="Continue" class="continueSessionBtn" onclick="continueSession()" />
+            </div>
+        </div>
+    </div><style type="text/css">
+/******************************************************************************
+ * Floater Style: These styles support the "floater" style used by single-     
+ * dialog pages such as the login and registration pages.  The page does not   
+ * use header and footer, has a background image scaled to the full window,    
+ * centers the content on the page and displays a copyright statement directly 
+ * below the dialog.                                                           
+ *****************************************************************************/
+
+@font-face {
+	font-family: sourceSansPro;
+	src: url("fonts/sourcesanspro-regular.ttf.woff");
+}
+
+body.floater span.copyright { color: #999999; }
+body.floater .errorMessage { color: #AB052F; }
+/******************************************************************************
+ * Adjust anything below this line with care.  Lines below control layout.     
+ *****************************************************************************/
+body.floater
+{
+	min-height: 100%;
+    min-width: fit-content;
+	margin: 0px;
+	padding: 0px;
+	background-color: transparent;
+    position: relative;
+}
+html {
+    height: 100%;
+}
+body.floater div.logoPanel
+{
+    margin: 1ex 0 0;
+    text-align: center;
+	font-weight: normal;
+}
+
+body.floater div.logoPanel
+{
+    margin: 1ex 0 0;
+    text-align: center;
+	font-weight: normal;
+}
+
+div.floatingPanel
+{
+	text-align: left;
+	min-width:25em;
+	padding:0px;
+    z-index: 250;
+    border: 1px solid #CCCCCC;
+}
+div.floatingPanelContents
+{
+    margin: 2.5ex 1.0em;
+}
+
+div.floatingPanelContents td:first-child
+{
+	line-height: 1.75em;
+}
+
+.floatingPanel .messageToolbar
+{
+	border-bottom-width:0px;
+}
+
+.infoText
+{
+    font-size:smaller;
+}
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+    display: none !important;
+}
+
+/* A table container for centering items on the page */
+table.container { width: 100%; height: 100%; min-height: 100vh; }
+table.container td.out { width: 50%; }
+.floatingPanel .ui-widget-content, .powered
+{
+	font-family:sourceSansPro,sans-serif;
+	font-size: 1em;
+    color: #000000;
+}
+.dialogMessage{margin:4ex 0}
+.hiddentext { position:absolute; left:0px; top:-500px; width:1px; height:1px; overflow:hidden; }
+
+input[type="text"].floaterInputField, input[type="password"].floaterInputField
+{
+	background-image: none;
+	background-color: #EEEEEE;
+	color: #333333;
+    height: 2em;
+    width: 24em;
+	border: 1px solid #CCCCCC;
+    margin-top: 1.25ex;
+    float: left;
+}
+
+input[type="text"].floaterInputCode
+{
+    background-image: none;
+    background-color: #ffffe0;
+    color: #333333;
+    height: 2em;
+    width: 20em;
+    border: 1px solid #CCCCCC;
+    margin-top: 1.25ex;
+    float: left;
+}
+
+input[type="text"].floaterInputCode:focus {
+    background-color: #FFFFFF;
+}
+
+input[type='text'].floaterInputField:focus, input[type="password"].floaterInputField:focus
+{
+    background-color: #FFFFFF;
+}
+
+input[type="text"].floaterInputField:disabled, input[type="password"].floaterInputField:disabled
+{
+    background-color: #DDDDDD;
+    color: #333333;
+}
+
+.placeholderText
+{
+    font-style: italic;
+    color: #777777 !important;
+
+}
+
+input[type='submit'].floaterButton, button[type='submit'].floaterButton
+{
+    height: 3em;
+    background-image: none;
+    border: 0;
+    border-radius: 0;
+    width: 100%;
+    color: #FFFFFF;
+    background-color: #3CA0DF;
+    font-weight: bold;
+    font-size: 1.13em;
+    margin-top: 1em;
+}
+
+input[type='submit'].floaterButton:hover, input[type='submit'].floaterButton:focus
+{
+    background-color: #55C6FE;
+    background-image: none;
+}
+
+button[type='submit'].floaterSecondaryButton
+{
+    background-color: #7F7E7A;
+}
+
+button[type='submit'].floaterSecondaryButton:hover, input[type='submit'].floaterSecondaryButton:focus
+{
+    opacity: 0.5;
+}
+
+td.buttonBox:last-child
+{
+    padding-left: 6px;
+}
+
+input[type='submit'].fullwidthButton
+{
+    width: 100%;
+}
+
+table.buttonContainer
+{
+    width: 100%;
+    border-collapse: collapse;
+}
+
+table.threeButtonContainer
+{
+    min-width: 38em;
+}
+
+td.buttonBox
+{
+    width: 50%;
+}
+
+td.triButtonBox
+{
+    width: 33%;
+}
+
+td.buttonPadding
+{
+    padding-left: 6px;
+}
+
+span.rf-msg span.rf-msg-err, span.rf-msgs span.rf-msgs-err
+{
+    background-position: left center;
+    padding-left: 20px;
+}
+.focusableCommandLink:focus {
+    outline: solid 1px #55C6FE;
+}
+/* browsers that support focus-visible will use this rule to remove outline if browser determines focus indicator should not be shown e.g. when user clicks */
+.focusableCommandLink:focus:not(:focus-visible) {
+    outline: 0;
+}
+.labelTopMargin {
+    margin-top: 1.25ex;
+    display: inline-block;
+    padding-right:10px;
+}
+.pageHeading {
+    display: inline;
+    font-weight: bold;
+    margin: 0px;
+    font-size: 100%;
+}
+.ui-messages-error, .ui-message-error {
+    color: #a90300 !important;
+    border: 1px solid #ffcdd2 !important;
+    border-width: 0 0 0 4px !important;
+}
+.ui-messages-info, .ui-message-info {
+    color: #02496b !important;
+    background: #ccffcc !important;
+    border: 1px solid #ccffcc !important;
+    border-width: 0 0 0 4px !important;
+}
+</style><style type="text/css">
+
+.secondaryButton {
+	background-color: #7F7E7A !important;
+    background-image: none;
+    padding: 0.4em 8px;
+    color: #FFFFFF;
+    font-weight: 600;
+    font-size: 0.88em;
+    border-radius: 5px;
+    vertical-align: middle;
+    text-decoration:none;
+}
+
+.secondaryButton:hover, .secondaryButton:focus {
+	opacity: 0.7;
+}
+.secondaryButton:focus {
+    outline: solid 1px #55C6FE;
+    outline-offset: 1px;
+}
+.secondaryButton:focus:not(:focus-visible) {
+    outline: none;
+    outline-offset: 0px;
+}
+
+/* SPECIAL TOOLBAR STYLES */
+div.messageToolbar {
+    background-color: #D1D2D4;
+    border-top: 2px solid #A1A2A4;
+    background-image: none;
+}
+
+ul.ui-menu-list > li.ui-menuitem {
+    padding-right: .5em;
+}
+#inbox\:inboxToolbar > ul > li:nth-child(2) {
+    float: right;
+}
+
+ul.ui-menu-list > li.ui-menuitem:last-child {
+    float:right;
+}
+
+.messageToolbar .toolbarButton, .messageToolbar a.toolbarButton, .messageToolbar a.toolbarButton:visited, li.ui-menu-parent > a.ui-menuitem-link, .messageToolbar .dropdownButton .ui-button {
+    background-image: none;
+    padding: 0.4em 8px;
+    color: #FFFFFF;
+    background-color: #3CA0DF;
+    font-weight: 600;
+    font-size: 0.88em;
+    border-radius: 5px;
+    vertical-align: middle;
+    text-decoration:none;
+    -webkit-user-drag: none;
+}
+.messageToolbar .dropdownButton .ui-button .ui-button-text {
+    padding: 0 1.5rem 0 0;
+}
+.messageToolbar .ui-button .ui-button-text {
+    line-height: 16px;
+}
+
+.messageToolbar .toolbarButton .ui-button-text {
+    padding: 0 !important;
+}
+.messageToolbar .ui-toolbar-group-left {
+    gap: 0.5em;
+}
+
+body .ui-toolbar {
+    padding: 0.3rem;
+}
+
+.messageToolbar .toolbarButtonDisabled{
+    cursor: default;
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+/* primefaces menuitem component adds a hidden div to handle accessibility, this selector applies to elements that are siblings of that hidden div */
+.messageToolbar > .ui-helper-hidden-accessible:focus ~ .ui-menu-list > li.ui-menuitem > a.ui-menuitem-link.ui-state-hover {
+    background-color: #55C6FE;
+}
+.messageToolbar > .ui-helper-hidden-accessible:focus ~ .ui-menu-list > li.ui-menuitem > a.ui-menuitem-link.ui-state-hover {
+    outline: solid 1px #55C6FE;
+    outline-offset: 1px;
+}
+/* Browsers that support focus-visible will hide the focus styling on click */
+.messageToolbar > .ui-helper-hidden-accessible:focus:not(:focus-visible) ~ .ui-menu-list > li.ui-menuitem > a.ui-menuitem-link.ui-state-hover {
+    outline: none;
+    outline-offset: 0px;
+}
+
+.messageToolbar .toolbarButton:hover, .messageToolbar li.ui-menu-parent > a.ui-menuitem-link:hover {
+    background-color: #55C6FE;
+    background-image: none;
+}
+
+.toolbarContainer div.rich-panel-body { padding: 0; }
+
+.messageToolbar td.rf-tb-itm div.rf-ddm-unsel,
+.messageToolbar td.rf-tb-itm div.rf-ddm-sel
+{
+    color: #FFFFFF;
+    background-color: #3CA0DF;
+    background-image: none;
+    height: 1.75em;
+    line-height: 1.75em;
+    border: 0;
+    border-radius: 5px;
+    vertical-align: middle;
+    padding: 2px 5px;
+    font-size: 0.88em;
+}
+
+.messageToolbar td.rf-tb-itm div.rf-ddm-unsel:hover,
+.messageToolbar td.rf-tb-itm div.rf-ddm-sel:hover
+{
+    background-color: #55C6FE;
+}
+.messageToolbar ul {
+    min-width: max-content;
+}
+
+div.rf-ddm-lst-bg {
+	background-image: none;
+	background-color: white;
+	border-color: ;
+}
+
+div.rf-ddm-itm-sel {
+	border-color: ;
+    background-color: ;
+    background-image: none;
+}
+
+.rf-ddm-lst-bg .rf-ddm-itm,
+.rf-ddm-lst-bg .rf-ddm-itm .rf-ddm-itm-sel
+{
+        color: #FFFFFF;
+        font-weight: normal;
+        text-decoration:none;
+}
+
+.messageToolbar td.rf-tb-itm
+{
+	padding: 0 0px;
+}
+
+td.rf-tb-itm:first-child
+{
+	padding-left:12px;
+}
+
+td.rf-tb-itm:last-child
+{
+	padding-right:12px;
+}
+
+a.attachButtonLink {
+	border-radius: 5px;
+    border: 0;
+    padding: 5px 5px 5px 5px;
+	color: #FFFFFF;
+	background-color: #3CA0DF;
+	background-image: none;
+    font-weight: 600;
+    display: inline-block;
+    margin: 5px 0;
+    -webkit-user-drag: none;
+}
+
+a.attachButtonLink:hover, a.attachButtonLink:focus {
+    background-color: #55C6FE;
+    color: #FFFFFF;
+    text-decoration: none;
+}
+
+a.attachButtonLink.secondaryButton:hover, a.attachButtonLink.secondaryButton:focus {
+    /* the 'cancel' button is not styled like other secondary buttons, avoid reducing opacity on hover/focus */
+    opacity: 1;
+}
+
+a.attachButtonLink:focus {
+    outline: solid 1px #55C6FE;
+    outline-offset: 1px;
+}
+a.attachButtonLink:focus:not(:focus-visible) {
+    outline: none;
+    outline-offset: 0px;
+}
+
+a.attachButtonLink:visited {
+	color: #FFFFFF;
+}
+
+span.cke_rcombo span.cke_off a {
+	height: 1.2em;
+}
+
+a span span.cke_inline_label {
+    font-size: 10pt;
+}
+
+.space-between-button {
+    margin-right: 8px;
+}
+.removeAttachmentButton:hover, .removeAttachmentButton:focus {
+    font-weight: bold;
+}
+body .ui-menu .ui-menu-list .dropdownButton .ui-menu-list .ui-menuitem-link .ui-menuitem-text, body .ui-menu .ui-menu-list .ui-menuitem .ui-menuitem-link .ui-menuitem-text {
+    color: #4f4f4f !important;
+}
+body .ui-menu .ui-menu-list .ui-menuitem .ui-menuitem-link .ui-menuitem-text {
+    color: #FFFFFF;
+}
+body .ui-menu .ui-menu-list .ui-menuitem.ui-menuitem-active>.ui-menuitem-link {
+    background-color: #55C6FE;
+}
+body .ui-menu .ui-menu-list .ui-menuitem.ui-menuitem-active>.ui-menuitem-link .ui-menuitem-text {
+    color: #ffffff !important;
+}
+body .ui-tabs .ui-tabs-nav li.ui-tabs-header.ui-state-active a {
+    color: #3CA0DF;
+}
+body .ui-menu.ui-menubar {
+    padding: 0.3rem;
+}
+body .ui-menu .ui-menu-list .ui-menuitem .ui-menuitem-link .ui-menuitem-text {
+    vertical-align: unset !important;
+}
+html .ui-state-loading.ui-button-text-only .ui-icon-loading + .ui-button-text {
+    opacity: inherit;
+}
+html .ui-state-loading .ui-icon-loading {
+    display: none;
+}
+html .ui-state-loading .ui-icon:not(.ui-icon-loading) {
+    display: inherit;
+}
+</style>
+			<link rel="stylesheet" href="/securereader/resources/css/all.min.css" />
+		<script type="text/javascript">
+
+			//PPS-86301 Called from onload once 
+			function setLinkDisableDefault() {
+				var manualRegistration = document.getElementById('dialog:disableRegCodeLink');
+				if(manualRegistration == null) {
+					return;
+				}
+				if (manualRegistration.value == "true") {
+					setLinkDisable();
+				}
+			}
+
+			function setLinkDisable() {
+				var link = document.getElementById('dialog:resendLink');
+				link.style.pointerEvents="none";
+				link.style.cursor="none";
+				link.style.color="gray";
+				link.style.textDecoration="none";
+			}
+
+			function setLinkEnable() {
+				var link = document.getElementById('dialog:resendLink');
+				link.style.pointerEvents="auto";
+				link.style.cursor="pointer";
+				link.style.textDecoration="underline";
+				link.style.color="darkblue";
+			}
+
+			function togglePasswordVisibility(fieldId) {
+				const passwordInput = document.getElementById('dialog:' + fieldId);
+				const passwordIcon = document.getElementById(fieldId + 'Icon');
+
+				if (passwordInput) {
+					if (passwordInput.type === 'password') {
+						passwordInput.type = 'text';
+						passwordIcon.classList.remove('fa-eye');
+						passwordIcon.classList.add('fa-eye-slash');
+					} else {
+						passwordInput.type = 'password';
+						passwordIcon.classList.remove('fa-eye-slash');
+						passwordIcon.classList.add('fa-eye');
+					}
+				} else {
+					console.error("Password input element not found!");
+				}
+			}
+
+			//Following function throttles validation code by disabling send for 3 minutes after first click
+			function throttleResend() {
+				setLinkDisable();
+				delayedRestore();
+			}
+
+			var timeoutID;
+			function delayedRestore() {
+				// Disable resend link for 3 minutes
+				var link = document.getElementById('dialog:resetTime');
+				var timeout = link.value;
+				timeoutID = setTimeout(enableLink, timeout);
+			}
+
+			function enableLink() {
+				setLinkEnable();
+				clearTimeout(timeoutID);
+				// Fadeout error message
+				$("#dialog\\:message").fadeOut('slow');
+			}
+
+		</script></head><body class="floater" dir="ltr" style="background-color:#F2F2F2;" onload="setTimeoutTimer();setLinkDisableDefault();">
+			<table class="container" cellpadding="0" cellspacing="0" border="0" style="z-index:10;" role="presentation">
+				<tr>
+					<td class="out"></td>
+					<td>
+<form id="dialog" name="dialog" method="post" action="/securereader/submitmessage.jsf" enctype="application/x-www-form-urlencoded" style="margin:0;padding:0">
+<input type="hidden" name="dialog" value="dialog" />
+<div id="dialog:j_idt16" class="ui-panel ui-widget ui-widget-content ui-corner-all floatingPanel" data-widget="widget_dialog_j_idt16"><div id="dialog:j_idt16_content" class="ui-panel-content ui-widget-content"><input id="dialog:resetTime" type="hidden" name="dialog:resetTime" value="180000" /><span id="dialog:j_idt17"></span><script type="text/javascript">$(function(){PrimeFaces.focus(null, 'dialog');});</script>
+                                <div class="logoPanel"><img src="Image?i=6" alt="Proofpoint" /></div><div id="dialog:headerContent" style="text-align: center; font-weight: bold; font-size: 110%;">
+		<h1 class="pageHeading">Submit a Message
+		</h1></div><div id="dialog:bodyContent" class="floatingPanelContents" role="main"><p>To read a secure message, open the attachment to your email.</p></div></div></div><script id="dialog:j_idt16_s" type="text/javascript">$(function(){PrimeFaces.cw("Panel","widget_dialog_j_idt16",{id:"dialog:j_idt16"});});</script><input type="hidden" name="javax.faces.ViewState" id="j_id1:javax.faces.ViewState:0" value="-567384526471166547:6438024669116712561" autocomplete="off" />
+</form>
+					</td>
+					<td class="out"></td>
+				</tr>
+			</table>
+	<div style="color: #706e6e;position:absolute;z-index:100;right:10px;bottom:10px" id="powered" class="powered watermark">Powered by Proofpoint Encryption&#x2122;
+	</div></body>
+	</html>
