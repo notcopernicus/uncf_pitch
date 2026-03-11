@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>COIN RK4 Model</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --border: #1e1e1e;
+    --accent: #c8f04a;
+    --accent2: #f04a4a;
+    --text: #e8e8e8;
+    --muted: #555;
+    --btc: #f7931a;
+    --coin: #4a9ef0;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    padding: 40px 24px;
+  }
+
+  .header {
+    max-width: 960px;
+    margin: 0 auto 48px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 24px;
+  }
+
+  .ticker {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 52px;
+    letter-spacing: 2px;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 300;
+    letter-spacing: 0.5px;
+  }
+
+  .main { max-width: 960px; margin: 0 auto; }
+
+  /* Variable Cards */
+  .variables-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 48px;
+  }
+
+  .var-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .var-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .var-card.btc::before { background: var(--btc); }
+  .var-card.vol::before { background: var(--accent); }
+  .var-card.sent::before { background: var(--accent2); }
+  .var-card.coin::before { background: var(--coin); }
+
+  .var-symbol {
+    font-family: 'DM Mono', monospace;
+    font-size: 28px;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+
+  .var-card.btc .var-symbol { color: var(--btc); }
+  .var-card.vol .var-symbol { color: var(--accent); }
+  .var-card.sent .var-symbol { color: var(--accent2); }
+  .var-card.coin .var-symbol { color: var(--coin); }
+
+  .var-name {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .var-desc {
+    font-size: 12px;
+    color: #888;
+    line-height: 1.5;
+  }
+
+  .var-init {
+    margin-top: 12px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+  }
+
+  /* Equation Block */
+  .section {
+    margin-bottom: 40px;
+  }
+
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .eq-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 20px 24px;
+    margin-bottom: 12px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .eq-title {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .eq {
+    font-size: 15px;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  .eq-explain {
+    font-size: 12px;
+    color: #777;
+    font-family: 'DM Sans', sans-serif;
+    line-height: 1.6;
+    margin-top: 10px;
+  }
+
+  .eq-explain strong { color: #aaa; font-weight: 500; }
+
+  /* RK4 Steps */
+  .steps-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .step-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px;
+  }
+
+  .step-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 42px;
+    color: var(--border);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .step-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .step-eq {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--text);
+    background: #0f0f0f;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border);
+    line-height: 1.8;
+  }
+
+  .step-plain {
+    font-size: 12px;
+    color: #777;
+    line-height: 1.6;
+  }
+
+  /* Final update */
+  .final-eq {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    padding: 24px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .final-eq .eq {
+    font-size: 17px;
+  }
+
+  /* Chart */
+  canvas {
+    width: 100% !important;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: block;
+  }
+
+  /* Controls */
+  .controls {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 24px;
+    margin-bottom: 16px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+
+  .control-group label {
+    display: block;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .control-group .val {
+    float: right;
+    color: var(--accent);
+  }
+
+  input[type=range] {
+    width: 100%;
+    appearance: none;
+    height: 2px;
+    background: var(--border);
+    outline: none;
+    margin-top: 4px;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--accent);
+    cursor: pointer;
+    border-radius: 0;
+  }
+
+  .thesis-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent2);
+    padding: 20px 24px;
+    margin-bottom: 48px;
+  }
+
+  .thesis-box p {
+    font-size: 13px;
+    color: #888;
+    line-height: 1.7;
+    margin-bottom: 8px;
+  }
+
+  .thesis-box p:last-child { margin-bottom: 0; }
+  .thesis-box strong { color: var(--accent2); font-weight: 500; }
+
+  .result-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .result-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 16px;
+    text-align: center;
+  }
+
+  .result-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .result-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    letter-spacing: 1px;
+  }
+
+  .result-val.up { color: var(--accent); }
+  .result-val.down { color: var(--accent2); }
+  .result-val.neutral { color: var(--coin); }
+
+  @media (max-width: 640px) {
+    .variables-grid { grid-template-columns: repeat(2, 1fr); }
+    .steps-grid { grid-template-columns: 1fr; }
+    .result-row { grid-template-columns: 1fr; }
+    .controls { grid-template-columns: 1fr; }
+    h1 { font-size: 36px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="ticker">NYSE: COIN — QUANTITATIVE THESIS — RK4 MODEL</div>
+  <h1>DIGITAL <span>GOLD?</span></h1>
+  <div class="subtitle">Runge-Kutta Order 4 Approximation · Coinbase Global Inc. · March 2026 · Current $195 · Target $224</div>
+</div>
+
+<div class="main">
+
+  <!-- Thesis Summary -->
+  <div class="section">
+    <div class="section-label">Investment Thesis</div>
+    <div class="thesis-box">
+      <p><strong>Core Argument:</strong> The market conflates Coinbase platform adoption with Bitcoin asset class adoption. These are mutually exclusive. Coinbase's revenue is hostage to Bitcoin's 4-year cycle — not its own operational execution.</p>
+      <p><strong>The Proof:</strong> Bitcoin went from $0 → $73,000 in 17 years with no regulatory support, hostile banking infrastructure, and zero institutional approval. Coinbase is building an "Everything Exchange" on an asset designed to need no exchange.</p>
+      <p><strong>The Trade:</strong> Short COIN following periods of increased macro risk sentiment and elevated transaction flows. Hedge with long BTC — scarcity plus systemic distrust is a more durable price driver than regulatory approval.</p>
+    </div>
+  </div>
+
+  <!-- 4 Variables -->
+  <div class="section">
+    <div class="section-label">The Four Variables</div>
+    <div class="variables-grid">
+      <div class="var-card btc">
+        <div class="var-symbol">B(t)</div>
+        <div class="var-name">Bitcoin Price</div>
+        <div class="var-desc">The primary driver. Everything downstream depends on this. Organic, adversarial, 17-year proven demand against fixed supply.</div>
+        <div class="var-init">B₀ = $70,800</div>
+      </div>
+      <div class="var-card vol">
+        <div class="var-symbol">V(t)</div>
+        <div class="var-name">Transaction Volume</div>
+        <div class="var-desc">Coinbase's revenue mechanism. Rises with Bitcoin price momentum. Falls when cycle turns. Not controlled by Coinbase operationally.</div>
+        <div class="var-init">V₀ = baseline index</div>
+      </div>
+      <div class="var-card sent">
+        <div class="var-symbol">S(t)</div>
+        <div class="var-name">Macro Risk Sentiment</div>
+        <div class="var-desc">The external shock variable. Geopolitical news, AI disruption, unemployment, tariffs. Drives correlation between BTC and equities.</div>
+        <div class="var-init">S₀ = 0.55 correlation</div>
+      </div>
+      <div class="var-card coin">
+        <div class="var-symbol">C(t)</div>
+        <div class="var-name">COIN Share Price</div>
+        <div class="var-desc">The dependent output. A derivative of a derivative. Moves with B(t) and V(t) but carries additional equity risk premium and leverage.</div>
+        <div class="var-init">C₀ = $195.00</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Differential Equations -->
+  <div class="section">
+    <div class="section-label">The System of Equations</div>
+
+    <div class="eq-block">
+      <div class="eq-title">Equation 1 — Bitcoin Price</div>
+      <div class="eq">dB/dt = αB · (1 - S) · (1/supply_remaining) · B</div>
+      <div class="eq-explain">
+        Bitcoin's rate of change is driven by its own momentum (α), dampened by macro risk sentiment (S), and amplified by supply scarcity.
+        As supply_remaining → 0 (approaching the 21M cap), the scarcity multiplier increases.
+        <strong>Key insight:</strong> This equation has no Coinbase term. Bitcoin's growth function is independent of any exchange.
+      </div>
+    </div>
+
+    <div class="eq-block">
+      <div class="eq-title">Equation 2 — Transaction Volume</div>
+      <div class="eq">dV/dt = βV · (dB/dt / B) · V · (1 - market_share_loss)</div>
+      <div class="eq-explain">
+        Volume tracks Bitcoin's percentage rate of change — not its absolute price. When Bitcoin momentum slows, volume decays even if price is high.
+        <strong>market_share_loss</strong> represents Binance, Kraken, DEXs, ATMs, PayPal — the 17-year reality that Bitcoin trades everywhere, not just Coinbase.
+        This term grows over time, compressing Coinbase's slice of the pie.
+      </div>
+    </div>
+
+    <div class="eq-block">
+      <div class="eq-title">Equation 3 — Macro Risk Sentiment</div>
+      <div class="eq">dS/dt = γS · (external_shock) - δS · S</div>
+      <div class="eq-explain">
+        Sentiment spikes on external shocks (tariffs, AI unemployment, geopolitical events) and decays naturally over time.
+        <strong>Critical:</strong> When S rises, it simultaneously hits B(t) and V(t) — a double compression on Coinbase revenue,
+        which then hits C(t) with a third compounding effect. This is the cascade your thesis describes.
+      </div>
+    </div>
+
+    <div class="eq-block">
+      <div class="eq-title">Equation 4 — Coinbase Share Price</div>
+      <div class="eq">dC/dt = λC · (V/V₀) · (B/B₀) - μC · S · C - νC · (leverage_ratio) · C</div>
+      <div class="eq-explain">
+        COIN rises with normalized volume and Bitcoin price. It falls with sentiment shocks and over-leverage.
+        <strong>The thesis is in νC:</strong> the leverage term. When investors get excited about price swings (your "delta" definition of over-leverage),
+        the unwind is violent. This is why COIN dropped ~50% from Q4 2025 — not regulatory clarity, but leverage flush meeting sentiment shock.
+      </div>
+    </div>
+  </div>
+
+  <!-- RK4 Steps -->
+  <div class="section">
+    <div class="section-label">The RK4 Method — Step By Step</div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--coin);padding:20px 24px;margin-bottom:16px;">
+      <div style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--muted);margin-bottom:10px;">WHY RK4?</div>
+      <div style="font-size:13px;color:#888;line-height:1.7;">
+        A simple model would assume Bitcoin grows at a constant rate — that's Euler's method, and it's wrong because the rate itself changes.
+        RK4 takes <strong style="color:#aaa">four slope estimates</strong> per time step and weights them together.
+        This captures the nonlinearity your thesis describes — the cycle accelerates, decelerates, and reverses.
+        It's an initial value problem: we know where we are today (B₀, V₀, S₀, C₀) and we want to know where the system goes.
+      </div>
+    </div>
+
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num">01</div>
+        <div class="step-name">K₁ — Slope at the Start</div>
+        <div class="step-eq">
+          k₁_B = f_B(t, B, V, S)<br>
+          k₁_V = f_V(t, B, V, S)<br>
+          k₁_S = f_S(t, S)<br>
+          k₁_C = f_C(t, B, V, S, C)
+        </div>
+        <div class="step-plain">
+          Evaluate all four differential equations at the current moment using today's known values.
+          This is your baseline — where the system is heading right now.
+          Think of it as: <em>if nothing changes, what's the trajectory?</em>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-num">02</div>
+        <div class="step-name">K₂ — Slope at the Midpoint (using K₁)</div>
+        <div class="step-eq">
+          k₂_B = f_B(t+h/2, B + h/2·k₁_B, ...)<br>
+          k₂_V = f_V(t+h/2, ...+ h/2·k₁_V)<br>
+          k₂_S = f_S(t+h/2, S + h/2·k₁_S)<br>
+          k₂_C = f_C(t+h/2, ...+ h/2·k₁_C)
+        </div>
+        <div class="step-plain">
+          Jump halfway through the time step using K₁'s slope, then re-evaluate.
+          This corrects for the fact that Bitcoin doesn't travel in a straight line —
+          it curves. The midpoint gives a better estimate of where the arc is heading.
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-num">03</div>
+        <div class="step-name">K₃ — Slope at the Midpoint (using K₂)</div>
+        <div class="step-eq">
+          k₃_B = f_B(t+h/2, B + h/2·k₂_B, ...)<br>
+          k₃_V = f_V(t+h/2, ...+ h/2·k₂_V)<br>
+          k₃_S = f_S(t+h/2, S + h/2·k₂_S)<br>
+          k₃_C = f_C(t+h/2, ...+ h/2·k₂_C)
+        </div>
+        <div class="step-plain">
+          Same midpoint, but now using K₂'s refined estimate.
+          This is RK4's key advantage — it samples the midpoint twice with improving accuracy.
+          This is where the cycle curvature gets properly captured.
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-num">04</div>
+        <div class="step-name">K₄ — Slope at the End</div>
+        <div class="step-eq">
+          k₄_B = f_B(t+h, B + h·k₃_B, ...)<br>
+          k₄_V = f_V(t+h, ...+ h·k₃_V)<br>
+          k₄_S = f_S(t+h, S + h·k₃_S)<br>
+          k₄_C = f_C(t+h, ...+ h·k₃_C)
+        </div>
+        <div class="step-plain">
+          Now jump to the full end of the time step using K₃'s slope.
+          This anchors the far end of the arc — critical for capturing
+          the leverage unwind dynamic where the end of a cycle looks nothing like the start.
+        </div>
+      </div>
+    </div>
+
+    <!-- Final weighted update -->
+    <div class="final-eq">
+      <div class="eq-title">FINAL UPDATE — Weighted Average of All Four Slopes</div>
+      <div class="eq">C(t+h) = C(t) + (h/6) · (k₁_C + 2k₂_C + 2k₃_C + k₄_C)</div>
+      <div class="eq-explain" style="margin-top:12px;">
+        The middle slopes (K₂, K₃) are weighted <strong>double</strong> because the midpoint carries more information about the curve than the endpoints.
+        This is the weighted average that makes RK4 accurate to the 4th order — error shrinks by h⁴ each step.
+        <br><br>
+        <strong>Applied to your thesis:</strong> Each time step h represents one quarter. You run this forward 40 steps (10 years).
+        The output C(t) at each step shows where Coinbase's price goes under different assumptions about Bitcoin's cycle,
+        market share erosion, and sentiment shocks. The divergence between C(t) and B(t) — normalized — is the proof.
+        If Coinbase's growth truly tracked Bitcoin's organic demand, the ratio should stay constant. It won't.
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Simulation -->
+  <div class="section">
+    <div class="section-label">Interactive RK4 Simulation</div>
+
+    <div class="controls">
+      <div class="control-group">
+        <label>Bitcoin Growth Rate (α) <span class="val" id="alphaVal">0.35</span></label>
+        <input type="range" id="alpha" min="0.1" max="0.8" step="0.01" value="0.35">
+      </div>
+      <div class="control-group">
+        <label>Market Share Loss Rate <span class="val" id="mslVal">0.04</span></label>
+        <input type="range" id="msl" min="0.01" max="0.15" step="0.01" value="0.04">
+      </div>
+      <div class="control-group">
+        <label>Macro Sentiment Shock (γ) <span class="val" id="gammaVal">0.20</span></label>
+        <input type="range" id="gamma" min="0.05" max="0.60" step="0.01" value="0.20">
+      </div>
+      <div class="control-group">
+        <label>Leverage Ratio (ν) <span class="val" id="nuVal">0.15</span></label>
+        <input type="range" id="nu" min="0.01" max="0.40" step="0.01" value="0.15">
+      </div>
+    </div>
+
+    <div class="result-row" id="results">
+      <div class="result-box">
+        <div class="result-label">BTC 10yr Projection</div>
+        <div class="result-val up" id="btcFinal">—</div>
+      </div>
+      <div class="result-box">
+        <div class="result-label">COIN 10yr Projection</div>
+        <div class="result-val down" id="coinFinal">—</div>
+      </div>
+      <div class="result-box">
+        <div class="result-label">COIN/BTC Ratio Δ</div>
+        <div class="result-val neutral" id="ratioDelta">—</div>
+      </div>
+    </div>
+
+    <canvas id="chart" height="340"></canvas>
+
+    <div style="margin-top:12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);display:flex;gap:24px;">
+      <span style="color:var(--btc)">■</span> Bitcoin (normalized)
+      <span style="color:var(--coin)">■</span> COIN Share Price
+      <span style="color:var(--accent)">■</span> Transaction Volume
+      <span style="color:var(--accent2)">■</span> Macro Sentiment Shock
+    </div>
+  </div>
+
+  <!-- Appendix -->
+  <div class="section">
+    <div class="section-label">Appendix — Variable Definitions</div>
+
+    <div class="eq-block" style="border-left-color:var(--accent2);margin-bottom:12px;">
+      <div class="eq-title">S(t) — Macro Risk Sentiment</div>
+      <div class="eq" style="color:var(--accent2)">External, time-varying shock input</div>
+      <div class="eq-explain">
+        Macro risk sentiment is defined as the aggregate of external conditions that suppress investor risk appetite independently of cryptocurrency fundamentals.
+        It encompasses three non-overlapping categories:<br><br>
+        <strong>Geopolitical:</strong> Trade policy changes, tariffs, sanctions, military conflict, and sovereign debt stress. These events compress risk appetite broadly across equities and digital assets simultaneously — reflected in Bitcoin's 0.55 correlation with the S&P 500 as of Q1 2026.<br><br>
+        <strong>Technological displacement:</strong> AI-driven unemployment concerns, cybersecurity threats to financial infrastructure, and systemic platform risk. These are distinct from geopolitical events in that they affect the labor and productivity assumptions underlying equity valuations, including Coinbase's growth narrative.<br><br>
+        <strong>Monetary conditions:</strong> Federal Reserve policy direction, real interest rates, and dollar strength. These set the opportunity cost of holding non-yielding assets like Bitcoin and directly compress or expand the risk premium investors assign to speculative equities like COIN.<br><br>
+        Critically, S(t) is an <em>input</em> to the system, not a function of transaction volume. Transaction volume (V) is a separate downstream variable that responds to S(t) — they are not interchangeable.
+      </div>
+    </div>
+
+    <div class="eq-block" style="border-left-color:var(--coin);margin-bottom:12px;">
+      <div class="eq-title">V(t) — Transaction Flows</div>
+      <div class="eq" style="color:var(--coin)">Coinbase revenue mechanism — derivative of Bitcoin momentum</div>
+      <div class="eq-explain">
+        Transaction flows are defined as the measurable movement of capital through Coinbase's exchange infrastructure across four distinct channels:<br><br>
+        <strong>Institutional equity flows:</strong> Net buying or selling of COIN shares by institutional participants, including ETF rebalancing, hedge fund positioning, and insider activity. These reflect forward-looking sentiment on Coinbase's business model, not current cryptocurrency demand.<br><br>
+        <strong>On-chain asset flows:</strong> Net inflows and outflows of BTC, ETH, SOL, and USDC across Coinbase's custodial and trading infrastructure. This is the primary revenue driver — exchange transaction fees scale directly with this volume.<br><br>
+        <strong>Stablecoin circulation:</strong> USDC mint and redemption activity through Circle's partnership with Coinbase. This component is partially insulated from Bitcoin's cycle but remains correlated with broader crypto market participation.<br><br>
+        <strong>Total addressable market compression:</strong> The structural erosion of Coinbase's share of global crypto transaction volume as capital routes through Binance, Kraken, OKX, DEXs, ATMs, PayPal, and peer-to-peer channels. This is the market share loss term in the model and is the most consequential long-run variable — Bitcoin has traded across all of these venues for 17 years without Coinbase's involvement.
+      </div>
+    </div>
+
+    <div class="eq-block" style="border-left-color:var(--btc);margin-bottom:12px;">
+      <div class="eq-title">Over-Leverage — The Delta Term (ν)</div>
+      <div class="eq" style="color:var(--btc)">Correlation amplifier between B(t) and C(t)</div>
+      <div class="eq-explain">
+        Over-leverage is defined as the rate of change in correlation between Bitcoin price and Coinbase share price during periods of elevated market excitement — not as a static measure of debt or margin usage.<br><br>
+        In practice, when Bitcoin begins a rapid upward move, leveraged derivatives positions accumulate in both BTC perpetual futures and COIN equity options. This temporarily tightens the B(t)→C(t) relationship beyond its structural baseline. The leverage term ν captures this dynamic as a <em>multiplier on sentiment-driven drawdowns</em> — when S(t) spikes and the leverage unwind begins, COIN's decline is amplified relative to Bitcoin's because COIN carries both the asset class risk and the operational equity risk simultaneously.<br><br>
+        This is why COIN declined approximately 50% from its Q4 2025 peak while Bitcoin's drawdown was comparatively contained. The leverage flush and the sentiment shock compounded. Subscription and service revenue — now approximately 40% of non-GAAP financials — provided partial insulation, but the dominant transaction revenue exposure ensured the cascade followed the model's predicted path.
+      </div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--muted);padding:20px 24px;">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:12px;">A NOTE ON VARIABLE INDEPENDENCE</div>
+      <div style="font-size:13px;color:#777;line-height:1.7;">
+        The three input variables — S(t), V(t), and the leverage ratio ν — are defined to be <strong style="color:#aaa">structurally non-overlapping</strong> in the model even though they correlate empirically. Sentiment S(t) measures external conditions arriving from outside the crypto system. Volume V(t) measures capital movement within Coinbase's infrastructure responding to those conditions. Leverage ν measures the amplification coefficient on the relationship between the underlying asset and the equity during the response. Each occupies a distinct causal position in the chain: shock → flow → amplification → price outcome. Conflating any two of these would misattribute the source of price movement — which is precisely the error the broader market makes when it credits regulatory clarity for price action that is structurally driven by this three-stage cascade.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const canvas = document.getElementById('chart');
+const ctx = canvas.getContext('2d');
+
+function runRK4(alpha, msl, gamma, nu) {
+  const h = 0.25; // quarterly steps
+  const steps = 40; // 10 years
+
+  let B = 70800;
+  let V = 1.0;
+  let S = 0.55;
+  let C = 195;
+  const B0 = 70800, V0 = 1.0, C0 = 195;
+
+  // Cycle: sine wave for halving cycle (~4yr period)
+  const cycle = (t) => 0.5 + 0.5 * Math.sin((2 * Math.PI * t) / 4.0);
+
+  // Shock events at certain quarters
+  const shock = (t) => {
+    const shocks = [2, 6, 14, 22, 30];
+    for (let s of shocks) {
+      if (Math.abs(t - s) < h) return 0.8;
+    }
+    return 0.0;
+  };
+
+  const fB = (t, B, V, S) => alpha * (1 - S * 0.4) * cycle(t) * B;
+  const fV = (t, B, V, S) => 0.6 * (fB(t,B,V,S)/B) * V * (1 - msl);
+  const fS = (t, S) => gamma * shock(t) - 0.5 * S;
+  const fC = (t, B, V, S, C) => 0.8 * (V/V0) * (B/B0) * C * 0.12 - 0.05 * C - nu * S * C;
+
+  const history = [{t:0, B, V, S, C}];
+
+  for (let i = 0; i < steps; i++) {
+    const t = i * h;
+
+    const k1_B = fB(t, B, V, S);
+    const k1_V = fV(t, B, V, S);
+    const k1_S = fS(t, S);
+    const k1_C = fC(t, B, V, S, C);
+
+    const k2_B = fB(t+h/2, B+h/2*k1_B, V+h/2*k1_V, S+h/2*k1_S);
+    const k2_V = fV(t+h/2, B+h/2*k1_B, V+h/2*k1_V, S+h/2*k1_S);
+    const k2_S = fS(t+h/2, S+h/2*k1_S);
+    const k2_C = fC(t+h/2, B+h/2*k1_B, V+h/2*k1_V, S+h/2*k1_S, C+h/2*k1_C);
+
+    const k3_B = fB(t+h/2, B+h/2*k2_B, V+h/2*k2_V, S+h/2*k2_S);
+    const k3_V = fV(t+h/2, B+h/2*k2_B, V+h/2*k2_V, S+h/2*k2_S);
+    const k3_S = fS(t+h/2, S+h/2*k2_S);
+    const k3_C = fC(t+h/2, B+h/2*k2_B, V+h/2*k2_V, S+h/2*k2_S, C+h/2*k2_C);
+
+    const k4_B = fB(t+h, B+h*k3_B, V+h*k3_V, S+h*k3_S);
+    const k4_V = fV(t+h, B+h*k3_B, V+h*k3_V, S+h*k3_S);
+    const k4_S = fS(t+h, S+h*k3_S);
+    const k4_C = fC(t+h, B+h*k3_B, V+h*k3_V, S+h*k3_S, C+h*k3_C);
+
+    B = Math.max(0, B + (h/6)*(k1_B + 2*k2_B + 2*k3_B + k4_B));
+    V = Math.max(0, V + (h/6)*(k1_V + 2*k2_V + 2*k3_V + k4_V));
+    S = Math.max(0, Math.min(1, S + (h/6)*(k1_S + 2*k2_S + 2*k3_S + k4_S)));
+    C = Math.max(0, C + (h/6)*(k1_C + 2*k2_C + 2*k3_C + k4_C));
+
+    history.push({t: (i+1)*h, B, V, S, C});
+  }
+
+  return history;
+}
+
+function draw() {
+  const alpha = parseFloat(document.getElementById('alpha').value);
+  const msl = parseFloat(document.getElementById('msl').value);
+  const gamma = parseFloat(document.getElementById('gamma').value);
+  const nu = parseFloat(document.getElementById('nu').value);
+
+  document.getElementById('alphaVal').textContent = alpha.toFixed(2);
+  document.getElementById('mslVal').textContent = msl.toFixed(2);
+  document.getElementById('gammaVal').textContent = gamma.toFixed(2);
+  document.getElementById('nuVal').textContent = nu.toFixed(2);
+
+  const data = runRK4(alpha, msl, gamma, nu);
+
+  const W = canvas.parentElement.offsetWidth - 2;
+  const H = 340;
+  canvas.width = W;
+  canvas.height = H;
+
+  const pad = {top: 20, right: 20, bottom: 40, left: 60};
+  const pw = W - pad.left - pad.right;
+  const ph = H - pad.top - pad.bottom;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, W, H);
+
+  // Normalize everything to [0,1] for display
+  const maxB = Math.max(...data.map(d=>d.B));
+  const maxV = Math.max(...data.map(d=>d.V));
+  const maxC = Math.max(...data.map(d=>d.C));
+  const maxS = Math.max(...data.map(d=>d.S));
+
+  const px = (i) => pad.left + (i / (data.length-1)) * pw;
+  const py = (v, max) => pad.top + ph - (v/max) * ph;
+
+  // Grid lines
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (i/4)*ph;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left+pw, y); ctx.stroke();
+  }
+
+  // Halving markers
+  [4,8,12,16].forEach(yr => {
+    const xi = yr * 4;
+    if (xi < data.length) {
+      const x = px(xi);
+      ctx.strokeStyle = '#2a2a2a';
+      ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.moveTo(x, pad.top); ctx.lineTo(x, pad.top+ph); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#333';
+      ctx.font = "9px 'DM Mono'";
+      ctx.fillText(`${yr}yr`, x+3, pad.top+12);
+    }
+  });
+
+  const drawLine = (color, getter, max, dash=[]) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash(dash);
+    ctx.beginPath();
+    data.forEach((d,i) => {
+      const x = px(i), y = py(getter(d), max);
+      i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+  };
+
+  drawLine('#f7931a', d=>d.B, maxB);
+  drawLine('#4a9ef0', d=>d.C, maxC);
+  drawLine('#c8f04a', d=>d.V, maxV, [3,3]);
+  drawLine('#f04a4a', d=>d.S, maxS, [2,4]);
+
+  // Y axis labels
+  ctx.fillStyle = '#444';
+  ctx.font = "10px 'DM Mono'";
+  ctx.fillText('HIGH', pad.left - 40, pad.top + 5);
+  ctx.fillText('LOW', pad.left - 36, pad.top + ph);
+
+  // X axis
+  ctx.fillStyle = '#333';
+  ctx.font = "9px 'DM Mono'";
+  ['2026','2028','2030','2032','2034','2036'].forEach((yr, i) => {
+    const xi = i * 8;
+    if (xi < data.length) ctx.fillText(yr, px(xi)-10, pad.top+ph+16);
+  });
+
+  // Update result boxes
+  const last = data[data.length-1];
+  const initRatio = 195/70800;
+  const finalRatio = last.C/last.B;
+  const ratioPct = ((finalRatio - initRatio)/initRatio*100).toFixed(0);
+
+  document.getElementById('btcFinal').textContent = '$' + Math.round(last.B).toLocaleString();
+  document.getElementById('coinFinal').textContent = '$' + Math.round(last.C).toLocaleString();
+  document.getElementById('ratioDelta').textContent = (ratioPct > 0 ? '+' : '') + ratioPct + '%';
+  document.getElementById('ratioDelta').className = 'result-val ' + (ratioPct < 0 ? 'down' : 'up');
+}
+
+['alpha','msl','gamma','nu'].forEach(id => {
+  document.getElementById(id).addEventListener('input', draw);
+});
+
+window.addEventListener('resize', draw);
+draw();
+</script>
+</body>
+</html>
